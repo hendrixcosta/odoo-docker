@@ -1,0 +1,56 @@
+version: '3'
+services:
+  db:
+    container_name: db_inowatt
+    image: postgres:12
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data/pgdata
+
+  web:
+    container_name: odoo_inowatt
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+      - "8072:8072"
+
+    environment:
+      - HOST=${DATABASE_HOST}
+      - USER=${DATABASE_USER}
+      - PASSWORD=${DATABASE_PASSWORD}
+      - PORT=${DATABASE_PORT}
+      - PYTHONUNBUFFERED=1
+
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+      - ./etc:/etc/odoo
+      - ./addons:/mnt/extra-addons
+      - ./volumes/filestore:/root/.local/share/Odoo/filestore
+      - ./volumes/sessions:/root/.local/share/Odoo/sessions
+
+    command: -d ${DATABASE_NAME} -i base -u base --without-demo=WITHOUT_DEMO --load-language pt_BR --db-filter=${DATABASE_NAME}
+
+  proxy:
+    depends_on:
+        - web
+    container_name: proxy_inowatt
+    build:
+        context: ./nginx
+        dockerfile: ./Dockerfile
+    ports:
+        - "80:80"
+
+    volumes:
+      - ./nginx:/etc/nginx/conf.d/
+
+volumes:
+  odoo-web-data:
+  odoo-db-data:
